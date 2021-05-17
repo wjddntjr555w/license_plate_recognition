@@ -17,7 +17,7 @@ MAX_HEIGHT_DIFF = 0.2
 MIN_N_MATCHED = 3
 
 # image Info
-img = cv2.imread('333.jpg')
+img = cv2.imread('3333.jpg')
 height, width, channel = img.shape
 
 #Final image
@@ -96,7 +96,7 @@ def threshold(img_blurred):
     return contours, img_thresh, temp_result
 
 def canny(img_blurred):
-    img_canny = cv2.Canny(img_blurred, 200, 300)
+    img_canny = cv2.Canny(img_blurred, 150, 300)
 
     contours, _ = cv2.findContours(img_canny,
                                    mode=cv2.RETR_LIST,
@@ -140,9 +140,7 @@ def findContours(contours):
             'x': x,
             'y': y,
             'w': w,
-            'h': h,
-            'cx': x + (w / 2),
-            'cy': y + (h / 2)
+            'h': h
         })
     # 윤곽선 이미지를 네모모양으로 표시
 
@@ -151,15 +149,14 @@ def findContours(contours):
 #findLicensePlate
 MIN_AREA = 80
 MIN_WIDTH, MIN_HEIGHT = 2, 8
-MAX_WIDTH, MAX_HEIGHT = 20, 80
+MAX_WIDTH, MAX_HEIGHT = 40, 80
 MIN_RATIO, MAX_RATIO = 0.25, 1.0
 
-MIN_RECT_GAP = 150
 MIN_GRADIENT = 0.25
 
-MIN_PADDING_X = 10
-MAX_PADDING_X = 150
-PADDING_Y = 30
+MIN_PADDING_X = 20
+MAX_PADDING_X = 20
+PADDING_Y = 20
 def findLicensePlate(contours_dict,img_blur):
     find_contours = []
 
@@ -180,6 +177,9 @@ def findLicensePlate(contours_dict,img_blur):
         cv2.rectangle(temp_result, pt1=(d['x'], d['y']), pt2=(d['x'] + d['w'], d['y'] + d['h']),
                       color=(255, 255, 255), thickness=2)
 
+    plt.figure(1)
+    plt.subplot(2, 2, 4)
+    plt.imshow(temp_result)
 
     for i in range(len(find_contours)):
         for j in range(len(find_contours)-(i+1)):
@@ -187,15 +187,16 @@ def findLicensePlate(contours_dict,img_blur):
                 temp = find_contours[j]['x']
                 find_contours[j]['x'] = find_contours[j+1]['x']
                 find_contours[j+1]['x'] = temp
-
+    cnt = 0
     for i in find_contours:
-        print(i['x'])
+        print(cnt,i['x'],i['y'],i['w'],i['h'])
+        cnt+=1
 
     max_cnt = 0
-    max_i = 0
-
     for i in range(len(find_contours)):
         cnt = 0
+        up_down = 0
+        MIN_RECT_GAP = find_contours[i]['w'] * 15
         for j in range(i+1, len(find_contours)):
             d_x = abs(find_contours[i]['x'] - find_contours[j]['x'])
             if d_x > MIN_RECT_GAP:
@@ -206,25 +207,48 @@ def findLicensePlate(contours_dict,img_blur):
                 continue
             gradient = float(d_y) / float(d_x)
             if gradient < MIN_GRADIENT:
-                cnt += 1
-        if cnt > max_cnt:
-            max_cnt = cnt
-            max_i = i
+                if up_down == 0:
+                    if find_contours[i]['y'] > find_contours[j]['y']:
+                        up_down = 1 #down
+                    else:
+                        up_down = 2 #up
 
-    print(max_cnt, max_i)
+                    cnt += 1
+                elif (up_down == 1 and find_contours[i]['y'] < find_contours[j]['y']) or (up_down == 2 and find_contours[i]['y'] > find_contours[j]['y']):
+                    break
+                else:
+                    cnt += 1
+
+            if cnt > max_cnt:
+                max_cnt = cnt
+                max_i = i
+                max_x = d_x
+                max_y = d_y
+
+
+    print(max_cnt, max_i, find_contours[max_i]['x'], find_contours[max_i]['y'], MIN_RECT_GAP)
 
     # number_plate = img_blur[find_contours[max_i]['y'] - 10:find_contours[max_i]['h'] + find_contours[max_i]['y'] + 20,
     #                find_contours[max_i]['x'] - 10:140 + find_contours[max_i]['x']]
-    number_plate = img_blur[find_contours[max_i]['y'] - PADDING_Y:find_contours[max_i]['h'] + find_contours[max_i]['y'] + PADDING_Y,
-                   find_contours[max_i]['x'] - MIN_PADDING_X:MAX_PADDING_X + find_contours[max_i]['x']]
+    rows, cols = img_blur.shape[:2]
+    height_r, width_r, _ = temp_result.shape
+    rotate = cv2.getRotationMatrix2D((width_r/2, height_r/2),360-(max_y/7),1)
+    rotation_plate = cv2.warpAffine(img_blur,rotate,(cols,rows))
+
+    number_plate = rotation_plate[find_contours[max_i]['y'] - PADDING_Y:find_contours[max_i]['h'] + find_contours[max_i]['y'] + int(PADDING_Y/2),
+                   find_contours[max_i]['x'] - MIN_PADDING_X:MAX_PADDING_X + max_x + int(max_x/max_cnt) + find_contours[max_i]['x']]
 
     resize_plate = cv2.resize(number_plate, None, fx=1.8, fy=1.8, interpolation=cv2.INTER_CUBIC + cv2.INTER_LINEAR)
+
     # plate_gray = cv2.cvtColor(resize_plate, cv2.COLOR_BGR2GRAY)
     _, th_plate = cv2.threshold(resize_plate, 150, 255, cv2.THRESH_BINARY)
 
     plt.figure(1)
     plt.subplot(2, 2, 1)
     plt.imshow(th_plate)
+
+    cv2.imwrite('plate_th.jpg',th_plate)
+    cv2.imwrite('roatate_th.jpg', rotation_plate)
 
     chars = pytesseract.image_to_string(th_plate, lang='kor', config='--psm 7 --oem 0')
 
