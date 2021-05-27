@@ -17,7 +17,7 @@ MAX_HEIGHT_DIFF = 0.2
 MIN_N_MATCHED = 3
 
 # image Info
-img = cv2.imread('6.png')
+img = cv2.imread('3333.jpg')
 height, width, channel = img.shape
 
 # Final image
@@ -31,7 +31,16 @@ def initial():
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # 흑백으로이미지 변환
     plt.figure(figsize=(14, 8))  # 그림 크기 지정
 
+    plt.figure(1)
+    plt.subplot(2, 2, 1)
+    plt.imshow(gray,cmap='gray')
+
     img_blurred = gaussian_blur(gray)  # 윤곽선 검출을 위한 블러 효과 적용, 흑백 이미지를 인자로
+    # img_blurred = median_blur(gray)
+    # img_blurred = gray
+    plt.figure(1)
+    plt.subplot(2, 2, 2)
+    plt.imshow(img_blurred,cmap = 'gray')
 
     return img_blurred
 
@@ -49,24 +58,24 @@ def gaussian_blur(gray):
     # gray = cv2.subtract(imgGrayscalePlusTopHat, imgBlackHat)
     # #tophat, blackhat 적용
 
-    img_blurred = cv2.GaussianBlur(gray, ksize=(5, 5), sigmaX=0)
+    img_blurred = cv2.GaussianBlur(gray, ksize=(5, 5), sigmaX=3)
     # 가우시안 블러 적용, 윤곽선을 더 잘 잡을 수 있도록 한다.
 
     return img_blurred
 
 
 def median_blur(gray):
-    structuringElement = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    # 엣지 검출을 위한 커널 행렬 설정 (모양, 크기)
-    imgTopHat = cv2.morphologyEx(gray, cv2.MORPH_TOPHAT, structuringElement)
-    imgBlackHat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, structuringElement)
-    # 모폴로지 연산, (원본배열, 연산방법, 커널) 경계선을 검출하기 위한 사전 작업
-    # tophat = 원본 - 열림(침식 + 팽창) : 밝은 영역 강조
-    # blackhat = 닫힘(팽창 + 침식) - 원본 : 어두운 부분 강조
-
-    imgGrayscalePlusTopHat = cv2.add(gray, imgTopHat)
-    gray = cv2.subtract(imgGrayscalePlusTopHat, imgBlackHat)
-    # tophat, blackhat 적용
+    # structuringElement = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    # # 엣지 검출을 위한 커널 행렬 설정 (모양, 크기)
+    # imgTopHat = cv2.morphologyEx(gray, cv2.MORPH_TOPHAT, structuringElement)
+    # imgBlackHat = cv2.morphologyEx(gray, cv2.MORPH_BLACKHAT, structuringElement)
+    # # 모폴로지 연산, (원본배열, 연산방법, 커널) 경계선을 검출하기 위한 사전 작업
+    # # tophat = 원본 - 열림(침식 + 팽창) : 밝은 영역 강조
+    # # blackhat = 닫힘(팽창 + 침식) - 원본 : 어두운 부분 강조
+    #
+    # imgGrayscalePlusTopHat = cv2.add(gray, imgTopHat)
+    # gray = cv2.subtract(imgGrayscalePlusTopHat, imgBlackHat)
+    # # tophat, blackhat 적용
 
     img_blurred = cv2.medianBlur(gray, ksize=(5))
 
@@ -99,7 +108,7 @@ def threshold(img_blurred):
 
 
 def canny(img_blurred):
-    img_canny = cv2.Canny(img_blurred, 100, 200)
+    img_canny = cv2.Canny(img_blurred, 150, 200)
 
     contours, _ = cv2.findContours(img_canny,
                                    mode=cv2.RETR_LIST,
@@ -116,7 +125,21 @@ def canny(img_blurred):
 
 
 def sobel(img_blurred):
-    img_sobel = cv2.Sobel(img_blurred, cv2.CV_8U, 1, 0, 3)
+    # img_sobel = cv2.Sobel(img_blurred, cv2.CV_8U, 1, 1, 3,delta=5)
+
+    img_sobel_x = cv2.Sobel(img_blurred,-1, 1, 0, ksize=3)
+    img_sobel_x = cv2.convertScaleAbs(img_sobel_x)
+    img_sobel_y = cv2.Sobel(img_blurred,-1, 0, 1, ksize=3)
+    img_sobel_y = cv2.convertScaleAbs(img_sobel_y)
+    img_sobel = cv2.addWeighted(img_sobel_x, 1, img_sobel_y, 1, 0)
+    plt.figure(1)
+    plt.subplot(2, 2, 4)
+    plt.imshow(img_sobel, cmap='gray')
+    # cv2.imshow("sobel_x", img_sobel_x)
+    # cv2.imshow("sobel_y", img_sobel_y)
+    # cv2.imshow("sobel", img_sobel)
+
+
 
     contours, _ = cv2.findContours(img_sobel,
                                    mode=cv2.RETR_LIST,
@@ -129,8 +152,29 @@ def sobel(img_blurred):
     return contours, img_sobel, temp_result
 
 
+def laplacian(img_blurred):
+    img_laplacian = cv2.Laplacian(img_blurred, -1,ksize=13)
+
+    contours, _ = cv2.findContours(img_laplacian,
+                                   mode=cv2.RETR_LIST,
+                                   method=cv2.CHAIN_APPROX_SIMPLE)
+
+    temp_result = np.zeros((height, width, channel), dtype=np.uint8)  # 0으로 초기화
+
+    cv2.drawContours(temp_result, contours=contours, contourIdx=-1, color=(255, 255, 255))
+
+    return contours, img_laplacian, temp_result
+
 def findContours(contours):
-    temp_result = np.zeros((height, width, channel), dtype=np.uint8)  # 0으로 재초기화
+    contours, _ = cv2.findContours(img_thresh, mode=cv2.RETR_TREE,
+                                   method=cv2.CHAIN_APPROX_SIMPLE)
+
+    temp_result = np.zeros((height, width, channel), dtype=np.uint8)
+
+    cv2.drawContours(temp_result, contours=contours, contourIdx=-1,
+                     color=(255, 255, 255))
+
+    temp_result = np.zeros((height, width, channel), dtype=np.uint8)
 
     contours_dict = []
 
@@ -144,9 +188,10 @@ def findContours(contours):
             'x': x,
             'y': y,
             'w': w,
-            'h': h
+            'h': h,
+            'cx': x + (w / 2),
+            'cy': y + (h / 2)
         })
-    # 윤곽선 이미지를 네모모양으로 표시
 
     return contours_dict, temp_result
 
@@ -161,6 +206,96 @@ MIN_GRADIENT = 0.25
 
 PADDING_X = 30
 PADDING_Y = 5
+
+def findLicensePlate_second(contours_dict, img_blur):
+    possible_contours = []
+
+    cnt = 0
+    for d in contours_dict:
+        area = d['w'] * d['h']
+        ratio = d['w'] / d['h']
+
+        if area > MIN_AREA \
+                and d['w'] > MIN_WIDTH and d['h'] > MIN_HEIGHT \
+                and MIN_RATIO < ratio < MAX_RATIO:
+            d['idx'] = cnt
+            cnt += 1
+            possible_contours.append(d)
+
+    temp_result = np.zeros((height, width, channel), dtype=np.uint8)
+
+    for d in possible_contours:
+        cv2.rectangle(temp_result, pt1=(d['x'], d['y']), pt2=(d['x'] + d['w'], d['y'] + d['h']),
+                      color=(255, 255, 255), thickness=2)
+
+    def find_chars(contour_list):
+        matched_result_idx = []
+
+        for d1 in contour_list:
+            matched_contours_idx = []
+            for d2 in contour_list:
+                if d1['idx'] == d2['idx']:
+                    continue
+
+                dx = abs(d1['cx'] - d2['cx'])
+                dy = abs(d1['cy'] - d2['cy'])
+
+                diagonal_length1 = np.sqrt(d1['w'] ** 2 + d1['h'] ** 2)
+
+                distance = np.linalg.norm(np.array([d1['cx'], d1['cy']]) - np.array([d2['cx'], d2['cy']]))
+                if dx == 0:
+                    angle_diff = 90
+                else:
+                    angle_diff = np.degrees(np.arctan(dy / dx))
+                area_diff = abs(d1['w'] * d1['h'] - d2['w'] * d2['h']) / (d1['w'] * d1['h'])
+                width_diff = abs(d1['w'] - d2['w']) / d1['w']
+                height_diff = abs(d1['h'] - d2['h']) / d1['h']
+
+                if distance < diagonal_length1 * MAX_DIAG_MULTIPLYER \
+                        and angle_diff < MAX_ANGLE_DIFF and area_diff < MAX_AREA_DIFF \
+                        and width_diff < MAX_WIDTH_DIFF and height_diff < MAX_HEIGHT_DIFF:
+                    matched_contours_idx.append(d2['idx'])
+
+            matched_contours_idx.append(d1['idx'])
+
+            if len(matched_contours_idx) < MIN_N_MATCHED:
+                continue
+
+            matched_result_idx.append(matched_contours_idx)
+
+            unmatched_contour_idx = []
+            for d4 in contour_list:
+                if d4['idx'] not in matched_contours_idx:
+                    unmatched_contour_idx.append(d4['idx'])
+
+            unmatched_contour = np.take(possible_contours,
+                                        unmatched_contour_idx)
+
+            recursive_contour_list = find_chars(unmatched_contour)
+
+            for idx in recursive_contour_list:
+                matched_result_idx.append(idx)
+
+            break
+
+        return matched_result_idx
+
+    result_idx = find_chars(possible_contours)
+
+    matched_result = []
+    for idx_list in result_idx:
+        matched_result.append(np.take(possible_contours, idx_list))
+
+    temp_result = np.zeros((height, width, channel), dtype=np.uint8)
+
+    for r in matched_result:
+        for d in r:
+            cv2.rectangle(temp_result, pt1=(d['x'], d['y']),
+                          pt2=(d['x'] + d['w'], d['y'] + d['h']),
+                          color=(255, 255, 255), thickness=2)
+
+
+    return matched_result, temp_result
 
 
 def findLicensePlate(contours_dict, img_blur):
@@ -182,9 +317,9 @@ def findLicensePlate(contours_dict, img_blur):
         cv2.rectangle(temp_result, pt1=(d['x'], d['y']), pt2=(d['x'] + d['w'], d['y'] + d['h']),
                       color=(255, 255, 255), thickness=2)
 
-    plt.figure(1)
-    plt.subplot(2, 2, 4)
-    plt.imshow(temp_result)
+    # plt.figure(1)
+    # plt.subplot(2, 2, 4)
+    # plt.imshow(temp_result)
 
     for i in range(len(find_contours)):
         for j in range(len(find_contours) - (i + 1)):
@@ -282,52 +417,123 @@ def findLicensePlate(contours_dict, img_blur):
 
     number_plate = img_blur[sel_y_min - PADDING_Y:sel_y_max + PADDING_Y + sel_h_max,
                    sel_x_min - PADDING_X:sel_x_max + PADDING_X + sel_w_max]
+    if number_plate != []:
+        resize_plate = cv2.resize(number_plate,(0,0), fx=1.8, fy=1.8, interpolation=cv2.INTER_CUBIC + cv2.INTER_LINEAR)
 
-    resize_plate = cv2.resize(number_plate, None, fx=1.8, fy=1.8, interpolation=cv2.INTER_CUBIC + cv2.INTER_LINEAR)
+        # plate_gray = cv2.cvtColor(resize_plate, cv2.COLOR_BGR2GRAY)
+        _, th_plate = cv2.threshold(resize_plate, 150, 255, cv2.THRESH_BINARY)
 
-    # plate_gray = cv2.cvtColor(resize_plate, cv2.COLOR_BGR2GRAY)
-    _, th_plate = cv2.threshold(resize_plate, 150, 255, cv2.THRESH_BINARY)
+        # plt.figure(1)
+        # plt.subplot(2, 2, 1)
+        # plt.imshow(th_plate)
+        cv2.imwrite('plate_th.jpg', th_plate)
+        # cv2.imwrite('roatate_th.jpg', rotation_plate)
 
-    plt.figure(1)
-    plt.subplot(2, 2, 1)
-    plt.imshow(th_plate)
-    cv2.imwrite('plate_th.jpg', th_plate)
-    # cv2.imwrite('roatate_th.jpg', rotation_plate)
+        chars = pytesseract.image_to_string(th_plate, lang='kor', config='--psm 7 --oem 0')
 
-    chars = pytesseract.image_to_string(th_plate, lang='kor', config='--psm 7 --oem 0')
+        result_chars = ''
+        has_digit = False
+        for c in chars:
+            if ord('가') <= ord(c) <= ord('힣') or c.isdigit():
+                if c.isdigit():
+                    has_digit = True
+                result_chars += c
+        print(result_chars)
 
-    result_chars = ''
-    has_digit = False
-    for c in chars:
-        if ord('가') <= ord(c) <= ord('힣') or c.isdigit():
-            if c.isdigit():
-                has_digit = True
-            result_chars += c
-    print(result_chars)
 
+def img_cropping(matched_result):
+
+    for i, matched_chars in enumerate(matched_result):
+        sorted_chars = sorted(matched_chars, key=lambda x: x['cx'])
+
+        plate_cx = (sorted_chars[0]['cx'] + sorted_chars[-1]['cx']) / 2
+        plate_cy = (sorted_chars[0]['cy'] + sorted_chars[-1]['cy']) / 2
+
+        plate_width = (sorted_chars[-1]['x'] + sorted_chars[-1]['w'] - sorted_chars[0]['x']) * PLATE_WIDTH_PADDING
+
+        sum_height = 0
+        for d in sorted_chars:
+            sum_height += d['h']
+
+        plate_height = int(sum_height / len(sorted_chars) * PLATE_HEIGHT_PADDING)
+
+        triangle_height = sorted_chars[-1]['cy'] - sorted_chars[0]['cy']
+        triangle_hypotenus = np.linalg.norm(
+            np.array([sorted_chars[0]['cx'], sorted_chars[0]['cy']]) -
+            np.array([sorted_chars[-1]['cx'], sorted_chars[-1]['cy']])
+        )
+
+        angle = np.degrees(np.arcsin(triangle_height / triangle_hypotenus))
+
+        rotation_matrix = cv2.getRotationMatrix2D(center=(plate_cx, plate_cy), angle=angle, scale=1.0)
+
+        img_rotated = cv2.warpAffine(img_thresh, M=rotation_matrix, dsize=(width, height))
+
+        img_cropped = cv2.getRectSubPix(
+            img_rotated,
+            patchSize=(int(plate_width), int(plate_height)),
+            center=(int(plate_cx), int(plate_cy))
+        )
+
+        if img_cropped.shape[1] / img_cropped.shape[0] < MIN_PLATE_RATIO or img_cropped.shape[1] / img_cropped.shape[
+            0] < MIN_PLATE_RATIO > MAX_PLATE_RATIO:
+            continue
+
+        plate_imgs.append(img_cropped)
+        plate_infos.append({
+            'x': int(plate_cx - plate_width / 2),
+            'y': int(plate_cy - plate_height / 2),
+            'w': int(plate_width),
+            'h': int(plate_height)
+        })
+
+    return img_cropped
 
 # initial image color to gray.
+
 img_blurred = initial()
 
 # threshold
 # contours, img_thresh, temp_result = threshold(img_blurred) # AdaptiveThreshold
-contours, img_thresh, temp_result = canny(img_blurred)  # canny edge
-# contours, img_thresh, temp_result = sobel(img_blurred) #sobel edge
 
+# contours, img_thresh, temp_result = sobel(img_blurred) #sobel edge
+# contours, img_thresh, temp_result = laplacian(img_blurred) #laplacian edge
 # plt.figure(1)
 # plt.subplot(2,2,1)
 # plt.imshow(img_blurred, cmap='gray')
+
+contours, img_thresh, temp_result = canny(img_blurred)  # canny edge
+
+# contours, img_thresh, temp_result = laplacian(img_blurred)
 plt.figure(1)
-plt.subplot(2, 2, 2)
-plt.imshow(temp_result)
+plt.subplot(2, 2, 3)
+plt.imshow(temp_result, cmap='gray')
+
+# contours, img_thresh, temp_result = sobel(img_blurred)  # sobel edge
+# plt.figure(1)
+# plt.subplot(2, 2, 4)
+# plt.imshow(temp_result, cmap='gray')
 
 # findContours
 contours_dict, temp_result = findContours(contours)
 
-plt.figure(1)
-plt.subplot(2, 2, 3)
-plt.imshow(temp_result)
+matched_result, temp_result = findLicensePlate_second(contours_dict, img_blurred)
+# plt.figure(1)
+# plt.subplot(2, 2, 3)
+# plt.imshow(temp_result, cmap='gray')
+temp_result = img_cropping(matched_result)
 
-findLicensePlate(contours_dict, img_blurred)
+plt.figure(1)
+plt.subplot(2, 2, 4)
+plt.imshow(temp_result, cmap='gray')
+
+info = plate_infos[longest_idx]
+img_out = img.copy()
+
+cv2.rectangle(img_out, pt1=(info['x'], info['y']), pt2=(info['x']+info['w'], info['y']+info['h']), color=(255,0,0), thickness=2)
+
+plt.figure(1)
+plt.subplot(2, 2, 4)
+plt.imshow(img_out, cmap='gray')
 
 plt.show()
