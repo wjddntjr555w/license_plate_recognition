@@ -17,7 +17,7 @@ MAX_HEIGHT_DIFF = 0.2
 MIN_N_MATCHED = 3
 
 # image Info
-img = cv2.imread('3333.jpg')
+img = cv2.imread('4.jpg')
 height, width, channel = img.shape
 
 # Final image
@@ -31,9 +31,6 @@ def initial():
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # 흑백으로이미지 변환
     plt.figure(figsize=(14, 8))  # 그림 크기 지정
 
-    plt.figure(1)
-    plt.subplot(2, 2, 1)
-    plt.imshow(gray,cmap='gray')
 
     img_blurred = gaussian_blur(gray)  # 윤곽선 검출을 위한 블러 효과 적용, 흑백 이미지를 인자로
     # img_blurred = median_blur(gray)
@@ -108,7 +105,7 @@ def threshold(img_blurred):
 
 
 def canny(img_blurred):
-    img_canny = cv2.Canny(img_blurred, 150, 200)
+    img_canny = cv2.Canny(img_blurred, 200, 300)
 
     contours, _ = cv2.findContours(img_canny,
                                    mode=cv2.RETR_LIST,
@@ -516,7 +513,9 @@ plt.imshow(temp_result, cmap='gray')
 
 # findContours
 contours_dict, temp_result = findContours(contours)
-
+# plt.figure(1)
+# plt.subplot(2, 2, 3)
+# plt.imshow(temp_result, cmap='gray')
 matched_result, temp_result = findLicensePlate_second(contours_dict, img_blurred)
 # plt.figure(1)
 # plt.subplot(2, 2, 3)
@@ -533,7 +532,7 @@ img_out = img.copy()
 cv2.rectangle(img_out, pt1=(info['x'], info['y']), pt2=(info['x']+info['w'], info['y']+info['h']), color=(255,0,0), thickness=2)
 
 plt.figure(1)
-plt.subplot(2, 2, 4)
+plt.subplot(2, 2, 1)
 plt.imshow(img_out, cmap='gray')
 
 plt.show()
