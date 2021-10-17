@@ -17,7 +17,7 @@ MAX_HEIGHT_DIFF = 0.2
 MIN_N_MATCHED = 3
 
 # image Info
-img = cv2.imread('img_1.png')
+img = cv2.imread('scar2.png')
 height, width, channel = img.shape
 
 # Final image
@@ -105,7 +105,7 @@ def threshold(img_blurred):
 
 
 def canny(img_blurred):
-    img_canny = cv2.Canny(img_blurred, 200, 300)
+    img_canny = cv2.Canny(img_blurred, 10, 100)
 
     contours, _ = cv2.findContours(img_canny,
                                    mode=cv2.RETR_LIST,
