@@ -17,7 +17,7 @@ MAX_HEIGHT_DIFF = 0.2
 MIN_N_MATCHED = 3
 
 # image Info
-img = cv2.imread('4.jpg')
+img = cv2.imread('img_1.png')
 height, width, channel = img.shape
 
 # Final image
