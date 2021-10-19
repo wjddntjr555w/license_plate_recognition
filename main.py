@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import pytesseract
+import sys
 
 # imgCrop
 PLATE_WIDTH_PADDING = 1.3
@@ -536,3 +537,6 @@ plt.subplot(2, 2, 1)
 plt.imshow(img_out, cmap='gray')
 
 plt.show()
+
+
+print(sys.version)
